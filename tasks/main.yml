@@ -1,0 +1,71 @@
+---
+- name: Get latest keychain version from GitHub
+  github_release:
+    user: funtoo
+    repo: keychain
+    token: "{{ github_repo_access_token }}"
+    action: latest_release
+  register: keychain_latest_github
+
+- name: Output latest keychain version
+  debug:
+    msg: "Latest keychain version is {{ keychain_latest_github }}"
+    verbosity: 1
+
+- name: Set latest release as fact
+  set_fact:
+    keychain_latest_release: "{{ keychain_latest_github.tag }}"
+
+- name: Get installed version
+  shell: >-
+    keychain --version 2>&1 | grep "keychain" |  sed -r "s/.*keychain\s([0-9\.]+).*$/\1/"
+  register: keychain_local
+
+- name: Output installed keychain version
+  debug:
+    msg: "Installed keychain version is {{ keychain_local }}"
+    verbosity: 1
+  when: '"command not found" not in keychain_local.stdout'
+
+- name: Install keychain
+  block:
+    - name: Create temporary directory
+      tempfile:
+        state: directory
+      register: tmpdir
+    
+    - name: Get latest release from GitHub
+      unarchive:
+        src: "https://github.com/funtoo/keychain/archive/{{ keychain_latest_release}}.tar.gz"
+        dest: "{{ tmpdir.path }}"
+        remote_src: True
+        extra_opts:
+          - --strip-components=1
+    - name: Move keychain binary into place
+      copy:
+        src: "{{ tmpdir.path }}/keychain"
+        dest: "{{ keychain_prefix }}/bin/keychain"
+        owner: root
+        group: root
+        mode: 0755
+      become: True
+    - name: Ensure keychain man page directory exists
+      file:
+        path: "{{ keychain_prefix }}/share/man/man1"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+    - name: Move keychain man page into place
+      copy:
+        src: "{{ tmpdir.path }}/keychain.1"
+        dest: "{{ keychain_prefix }}/share/man/man1/keychain.1"
+        owner: root
+        group: root
+        mode: 0644
+      become: True
+    - name: Clean temporary directory
+      file:
+        path: "{{ tmpdir.path }}"
+        state: absent
+  when: '"command not found" in keychain_local.stdout or keychain_local.stdout != keychain_latest_github'
