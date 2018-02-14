@@ -1,26 +1,22 @@
 ---
 - name: Get latest keychain version from GitHub
-  github_release:
-    user: funtoo
-    repo: keychain
-    token: "{{ github_repo_access_token }}"
-    action: latest_release
-  register: keychain_latest_github
-
+  uri:
+    url: "{{ keychain_meta_json }}"
+    method: GET
+    return_content: yes
+  register: latest_version_info
+- name: Set latest version as fact
+  set_fact:
+    keychain_latest_github: "{{ (latest_version_info.content|from_json|first).name }}"
 - name: Output latest keychain version
   debug:
     msg: "Latest keychain version is {{ keychain_latest_github }}"
     verbosity: 1
 
-- name: Set latest release as fact
-  set_fact:
-    keychain_latest_release: "{{ keychain_latest_github.tag }}"
-
 - name: Get installed version
   shell: >-
     keychain --version 2>&1 | grep "keychain" |  sed -r "s/.*keychain\s([0-9\.]+).*$/\1/"
   register: keychain_local
-
 - name: Output installed keychain version
   debug:
     msg: "Installed keychain version is {{ keychain_local }}"
@@ -33,7 +29,6 @@
       tempfile:
         state: directory
       register: tmpdir
-    
     - name: Get latest release from GitHub
       unarchive:
         src: "https://github.com/funtoo/keychain/archive/{{ keychain_latest_release}}.tar.gz"
