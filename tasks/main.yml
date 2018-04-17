@@ -31,7 +31,7 @@
       register: tmpdir
     - name: Get latest release from GitHub
       unarchive:
-        src: "https://github.com/funtoo/keychain/archive/{{ keychain_latest_release}}.tar.gz"
+        src: "https://github.com/funtoo/keychain/archive/{{ keychain_latest_github}}.tar.gz"
         dest: "{{ tmpdir.path }}"
         remote_src: True
         extra_opts:
@@ -51,6 +51,7 @@
         owner: root
         group: root
         mode: 0755
+      become: True
     - name: Move keychain man page into place
       copy:
         src: "{{ tmpdir.path }}/keychain.1"
