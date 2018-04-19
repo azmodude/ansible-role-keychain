@@ -17,6 +17,7 @@
   shell: >-
     keychain --version 2>&1 | grep "keychain" |  sed -r "s/.*keychain\s([0-9\.]+).*$/\1/"
   register: keychain_local
+  changed_when: False
 - name: Output installed keychain version
   debug:
     msg: "Installed keychain version is {{ keychain_local }}"
